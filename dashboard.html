@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Atividades Acadêmicas</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="loading-overlay"><span>Carregando...</span></div>
+
+  <header>
+    <div class="header-inner">
+      <span class="header-title">📚 Atividades Acadêmicas</span>
+      <span class="header-user" id="user-name"></span>
+      <a href="admin.html" class="btn btn-small hidden" id="admin-link">
+        Admin
+      </a>
+      <button class="btn btn-small" id="logout-btn">Sair</button>
+    </div>
+  </header>
+
+  <main class="container" style="padding-top:1.5rem">
+
+    <!-- Filters -->
+    <div class="filters">
+      <div class="filter-group">
+        <label for="filter-subject">Disciplina</label>
+        <select id="filter-subject">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-type">Tipo</label>
+        <select id="filter-type">
+          <option value="">Todos</option>
+          <option value="PROVA">Prova</option>
+          <option value="TRABALHO">Trabalho</option>
+          <option value="LISTA">Lista</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-status">Status</label>
+        <select id="filter-status">
+          <option value="">Todos</option>
+          <option value="pending">Pendente</option>
+          <option value="completed">Concluído</option>
+          <option value="overdue">Atrasado</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" data-tab="active">Atividades</button>
+      <button class="tab" data-tab="archived">Arquivadas</button>
+    </div>
+
+    <!-- Activity list -->
+    <div id="activity-list">
+      <div class="empty-state">Carregando atividades...</div>
+    </div>
+
+  </main>
+
+  <script type="module" src="js/dashboard.js"></script>
+</body>
+</html>
