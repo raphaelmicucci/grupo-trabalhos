@@ -33,22 +33,25 @@ Sistema interno para acompanhamento de atividades e provas, com autenticação F
 4. Crie um banco **Firestore** (modo produção)
 5. Crie um **Storage** bucket
 
-### 2. Configurar o app
+### 2. Configurar secrets do repositório
 
-Abra `js/firebase-config.js` e substitua os valores de placeholder pelos dados do seu projeto:
+As credenciais do Firebase **não ficam no código-fonte**. Elas são injetadas automaticamente pelo workflow de deploy via **GitHub Actions Secrets**.
 
-```js
-const firebaseConfig = {
-  apiKey:            'SUA_API_KEY',
-  authDomain:        'SEU_PROJETO_ID.firebaseapp.com',
-  projectId:         'SEU_PROJETO_ID',
-  storageBucket:     'SEU_PROJETO_ID.appspot.com',
-  messagingSenderId: 'SEU_MESSAGING_SENDER_ID',
-  appId:             'SEU_APP_ID'
-};
-```
+Para configurar:
 
-As credenciais estão em: Firebase Console → ⚙ Configurações do projeto → Seus aplicativos → Aplicativo web.
+1. No GitHub, acesse **Settings → Secrets and variables → Actions → New repository secret**
+2. Adicione os seguintes secrets (os valores estão em: Firebase Console → ⚙ Configurações do projeto → Seus aplicativos → Aplicativo web):
+
+| Secret | Descrição |
+|--------|-----------|
+| `FIREBASE_API_KEY` | API Key do projeto Firebase |
+| `FIREBASE_AUTH_DOMAIN` | Domínio de autenticação (ex: `projeto.firebaseapp.com`) |
+| `FIREBASE_PROJECT_ID` | ID do projeto Firebase |
+| `FIREBASE_STORAGE_BUCKET` | Bucket do Storage (ex: `projeto.firebasestorage.app`) |
+| `FIREBASE_MESSAGING_SENDER_ID` | ID do remetente de mensagens |
+| `FIREBASE_APP_ID` | ID do aplicativo web |
+
+A cada push na branch `main`, o workflow `.github/workflows/deploy.yml` substitui os tokens de placeholder (`__FIREBASE_API_KEY__` etc.) pelos valores dos secrets e publica no GitHub Pages.
 
 ### 3. Implantar regras de segurança
 
@@ -117,13 +120,16 @@ O campo `mustChangePassword: true` força a troca de senha no primeiro acesso.
 ├── css/
 │   └── style.css         # Estilos (minimalista brutalista)
 ├── js/
-│   ├── firebase-config.js # Inicialização do Firebase ← editar aqui
+│   ├── firebase-config.js # Inicialização do Firebase (tokens substituídos no deploy)
 │   ├── auth-guard.js      # Proteção de rotas
 │   ├── index.js           # Lógica do index.html
 │   ├── login.js           # Lógica do login
 │   ├── change-password.js # Lógica da troca de senha
 │   ├── dashboard.js       # Lógica do dashboard
 │   └── admin.js           # Lógica do painel admin
+├── .github/
+│   └── workflows/
+│       └── deploy.yml     # Deploy automático com injeção de secrets
 ├── firestore.rules        # Regras de segurança Firestore
 ├── storage.rules          # Regras de segurança Storage
 └── firebase.json          # Config Firebase CLI
