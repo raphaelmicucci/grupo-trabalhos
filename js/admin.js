@@ -230,6 +230,21 @@ function openSubjectModal(subject = null) {
 }
 
 async function deleteSubject(id) {
+  // Block deletion if any activities or enrollments reference this subject
+  const hasActivities = activities.some(a => a.subjectId === id);
+  const hasEnrollments = enrollments.some(e => e.subjectId === id);
+
+  if (hasActivities || hasEnrollments) {
+    alert(
+      'Não é possível excluir esta disciplina porque ela possui ' +
+      (hasActivities ? 'atividades' : '') +
+      (hasActivities && hasEnrollments ? ' e ' : '') +
+      (hasEnrollments ? 'matrículas' : '') +
+      ' vinculadas. Remova-as primeiro.'
+    );
+    return;
+  }
+
   if (!confirm('Excluir esta disciplina? Esta ação não pode ser desfeita.')) return;
   try {
     await deleteDoc(doc(db, 'subjects', id));
@@ -475,6 +490,15 @@ function openActivityModal(activity = null) {
     e.target.value = '';
   });
 
+  // Register the delegated remove listener on pending-files-list once here
+  document.getElementById('pending-files-list').addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-remove-pending]');
+    if (!btn) return;
+    const idx = parseInt(btn.dataset.removePending, 10);
+    pendingFiles[idx] = null; // null = skip on upload
+    btn.closest('li').remove();
+  });
+
   // Remove existing attachments
   const existEl = document.getElementById('existing-attachments');
   if (existEl) {
@@ -499,17 +523,16 @@ function addPendingFiles(files) {
               data-remove-pending="${pendingFiles.length - files.length + idx}">Remover</button>`;
     list.appendChild(li);
   });
-  list.addEventListener('click', (e) => {
-    const btn = e.target.closest('[data-remove-pending]');
-    if (!btn) return;
-    const idx = parseInt(btn.dataset.removePending, 10);
-    pendingFiles[idx] = null; // null = skip
-    btn.closest('li').remove();
-  });
 }
 
 async function uploadFile(activityId, file) {
-  const storageRef = ref(storage, `activities/${activityId}/${file.name}`);
+  // Use a unique prefix to avoid overwriting objects with the same filename
+  const uniquePrefix =
+    (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function')
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  const objectName = `${uniquePrefix}-${file.name}`;
+  const storageRef = ref(storage, `activities/${activityId}/${objectName}`);
   await uploadBytes(storageRef, file);
   const url = await getDownloadURL(storageRef);
   return { name: file.name, url, size: file.size };

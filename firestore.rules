@@ -56,11 +56,14 @@ service cloud.firestore {
 
     // ── activityStatus ───────────────────────────────────────
     // Each student can only read/write their own status docs.
+    // On update, studentUid must remain unchanged and match the authenticated user.
     match /activityStatus/{statusId} {
       allow read: if isAuth() && resource.data.studentUid == request.auth.uid;
       allow create: if isAuth() &&
         request.resource.data.studentUid == request.auth.uid;
-      allow update: if isAuth() && resource.data.studentUid == request.auth.uid;
+      allow update: if isAuth() &&
+        resource.data.studentUid == request.auth.uid &&
+        request.resource.data.studentUid == request.auth.uid;
       allow delete: if isAuth() && resource.data.studentUid == request.auth.uid;
     }
   }

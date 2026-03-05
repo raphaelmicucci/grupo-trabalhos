@@ -69,7 +69,10 @@ form.addEventListener('submit', async (e) => {
     setLoading(false);
     if (err.code === 'auth/requires-recent-login') {
       showAlert('Sessão expirada. Faça login novamente e tente outra vez.');
-      setTimeout(() => { window.location.href = 'login.html'; }, 3000);
+      setTimeout(async () => {
+        try { await signOut(auth); } catch (_) { /* ignore */ }
+        window.location.href = 'login.html';
+      }, 3000);
     } else {
       showAlert('Erro ao salvar nova senha. Tente novamente.');
     }
