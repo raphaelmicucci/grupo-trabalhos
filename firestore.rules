@@ -16,6 +16,14 @@ service cloud.firestore {
       return isAuth() && request.auth.uid == uid;
     }
 
+    // ── usernameLookup ───────────────────────────────────────────
+    // Public read — documents only contain a synthetic email, no PII.
+    // Only admins can create/update/delete entries.
+    match /usernameLookup/{username} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // ── users ────────────────────────────────────────────────
     // Admins can read/write any user doc.
     // Users can read their own doc and update ONLY mustChangePassword.

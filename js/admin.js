@@ -30,7 +30,7 @@ requireAdmin(async (adminProfile) => {
   profile = adminProfile;
 
   document.getElementById('user-name').textContent =
-    adminProfile.name || adminProfile.email;
+    adminProfile.name || adminProfile.username;
 
   document.getElementById('logout-btn').addEventListener('click', async () => {
     await signOut(auth);
@@ -81,8 +81,7 @@ async function loadAllData() {
   ]);
   subjects    = subSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   activities  = actSnap.docs.map(d => ({ id: d.id, ...d.data() }));
-  users       = usrSnap.docs.map(d => ({ id: d.id, ...d.data() }))
-                            .filter(u => u.role === 'STUDENT');
+  users       = usrSnap.docs.map(d => ({ id: d.id, ...d.data() }));
   enrollments = enrSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 }
 
@@ -93,6 +92,24 @@ function renderCurrentTab() {
     case 'activities':  renderActivitiesTab();  break;
     case 'enrollments': renderEnrollmentsTab(); break;
   }
+}
+
+// ── Time helpers ─────────────────────────────────────────────
+const DURACAO_MINUTOS = { '1h40': 100, '3h30': 210 };
+
+function addMinutes(hhmm, minutes) {
+  const [h, m] = hhmm.split(':').map(Number);
+  const total  = h * 60 + m + minutes;
+  const hh     = String(Math.floor(total / 60) % 24).padStart(2, '0');
+  const mm     = String(total % 60).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
+function formatHorario(inicio, duracao) {
+  if (!inicio || !duracao) return '—';
+  const mins = DURACAO_MINUTOS[duracao];
+  if (!mins) return inicio;
+  return `${inicio} às ${addMinutes(inicio, mins)}`;
 }
 
 // ════════════════════════════════════════════════════════════════
@@ -112,7 +129,7 @@ function renderSubjectsTab() {
         <thead>
           <tr>
             <th>Nome</th><th>Código</th><th>Professor</th>
-            <th>Dia</th><th>Semestre</th><th>Ações</th>
+            <th>Dia</th><th>Horário</th><th>Semestre</th><th>Ações</th>
           </tr>
         </thead>
         <tbody id="subjects-tbody"></tbody>
@@ -127,7 +144,7 @@ function renderSubjectsTab() {
   const tbody = document.getElementById('subjects-tbody');
   if (subjects.length === 0) {
     tbody.innerHTML =
-      '<tr><td colspan="6" style="text-align:center;color:var(--text-muted)">Nenhuma disciplina cadastrada.</td></tr>';
+      '<tr><td colspan="7" style="text-align:center;color:var(--text-muted)">Nenhuma disciplina cadastrada.</td></tr>';
     return;
   }
 
@@ -142,6 +159,7 @@ function renderSubjectsTab() {
       <td>${esc(s.code)}</td>
       <td>${esc(s.professor)}</td>
       <td>${WEEKDAYS[s.weekday] || s.weekday}</td>
+      <td>${formatHorario(s.horario_inicio, s.duracao)}</td>
       <td>${esc(s.semester)}</td>
       <td class="td-actions">
         <button class="btn btn-small" data-action="edit-subject">Editar</button>
@@ -191,24 +209,39 @@ function openSubjectModal(subject = null) {
         </select>
       </div>
       <div class="form-group">
-        <label for="s-semester">Semestre *</label>
-        <input type="text" id="s-semester" required placeholder="Ex: 2024/1"
+        <label for="s-semester">Semestre do Curso *</label>
+        <input type="text" id="s-semester" required placeholder="6"
                value="${esc(subject?.semester ?? '')}">
+      </div>
+      <div class="form-group">
+        <label for="s-horario">Horário de início *</label>
+        <input type="time" id="s-horario" required
+               value="${esc(subject?.horario_inicio ?? '14:50')}">
+      </div>
+      <div class="form-group">
+        <label for="s-duracao">Duração *</label>
+        <select id="s-duracao" required>
+          <option value="" disabled ${!subject?.duracao ? 'selected' : ''}>Selecione</option>
+          <option value="1h40" ${subject?.duracao === '1h40' ? 'selected' : ''}>1h40</option>
+          <option value="3h30" ${subject?.duracao === '3h30' ? 'selected' : ''}>3h30</option>
+        </select>
       </div>
     </form>`,
     async () => {
-      const name     = document.getElementById('s-name').value.trim();
-      const code     = document.getElementById('s-code').value.trim();
-      const prof     = document.getElementById('s-prof').value.trim();
-      const weekday  = document.getElementById('s-weekday').value;
-      const semester = document.getElementById('s-semester').value.trim();
+      const name          = document.getElementById('s-name').value.trim();
+      const code          = document.getElementById('s-code').value.trim();
+      const prof          = document.getElementById('s-prof').value.trim();
+      const weekday       = document.getElementById('s-weekday').value;
+      const semester      = document.getElementById('s-semester').value.trim();
+      const horario_inicio = document.getElementById('s-horario').value;
+      const duracao       = document.getElementById('s-duracao').value;
 
-      if (!name || !code || !weekday || !semester) {
+      if (!name || !code || !weekday || !semester || !horario_inicio || !duracao) {
         alertModal('Preencha todos os campos obrigatórios.');
         return;
       }
 
-      const data = { name, code, professor: prof, weekday, semester };
+      const data = { name, code, professor: prof, weekday, semester, horario_inicio, duracao };
       setModalLoading(true);
 
       try {
@@ -607,7 +640,7 @@ function renderEnrollmentsTab() {
     const div = document.createElement('div');
     div.className = 'enrollment-student-item';
     div.dataset.uid = u.uid || u.id;
-    div.textContent = u.name || u.email;
+    div.textContent = u.username || u.name;
     if (div.dataset.uid === selectedStudentUid) div.classList.add('active');
     div.addEventListener('click', () => {
       document.querySelectorAll('.enrollment-student-item')
@@ -638,8 +671,31 @@ function renderSubjectChecklist(studentUid) {
       .map(e => e.subjectId)
   );
 
+  const WEEKDAY_ORDER = { SEG:0, TER:1, QUA:2, QUI:3, SEX:4, SAB:5 };
+  const sorted = [...subjects].sort((a, b) => {
+    const semA = parseInt(a.semester) || 0;
+    const semB = parseInt(b.semester) || 0;
+    if (semA !== semB) return semA - semB;
+    const dayA = WEEKDAY_ORDER[a.weekday] ?? 99;
+    const dayB = WEEKDAY_ORDER[b.weekday] ?? 99;
+    if (dayA !== dayB) return dayA - dayB;
+    return (a.horario_inicio || '').localeCompare(b.horario_inicio || '');
+  });
+
+  const WEEKDAY_ABBR = { SEG:'SEG', TER:'TER', QUA:'QUA', QUI:'QUI', SEX:'SEX', SAB:'SÁB' };
   container.innerHTML = '';
-  subjects.forEach(s => {
+  let lastSemester = null;
+  sorted.forEach(s => {
+    const sem = s.semester || '—';
+    if (sem !== lastSemester) {
+      lastSemester = sem;
+      const header = document.createElement('div');
+      header.className = 'checklist-semester-header';
+      const num = parseInt(sem);
+      header.textContent = num ? `${num}º Semestre` : `Semestre ${sem}`;
+      container.appendChild(header);
+    }
+
     const item = document.createElement('div');
     item.className = 'enrollment-subject-item';
 
@@ -653,7 +709,7 @@ function renderSubjectChecklist(studentUid) {
 
     const label = document.createElement('label');
     label.htmlFor    = `enr-${s.id}`;
-    label.textContent = `${s.name} (${s.code})`;
+    label.textContent = `${WEEKDAY_ABBR[s.weekday] || s.weekday} | ${s.name} (${s.code})`;
     label.style.cursor = 'pointer';
     label.style.flex   = '1';
 

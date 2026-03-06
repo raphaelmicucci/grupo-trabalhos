@@ -38,7 +38,7 @@ export function requireAuth(callback) {
         return;
       }
 
-      const profile = { uid: user.uid, email: user.email, ...snap.data() };
+      const profile = { uid: user.uid, ...snap.data() };
 
       if (profile.mustChangePassword) {
         // Do not redirect if already on change-password page

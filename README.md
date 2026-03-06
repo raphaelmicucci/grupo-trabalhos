@@ -66,35 +66,52 @@ firebase deploy --only firestore:rules,storage
 
 ### 4. Criar o primeiro usuário ADMIN
 
-1. No Firebase Console → Authentication, crie um usuário com email e senha.
-2. No Firestore, crie o documento `users/{uid}` com:
+1. No Firebase Console → Authentication, crie um usuário:
+   - **Email:** `admin@grupotrab.internal`
+   - **Senha:** temporária de sua escolha
+2. Copie o UID gerado.
+3. No Firestore, crie o documento `users/{uid}` com:
 
 ```json
 {
   "uid": "<UID copiado do Authentication>",
+  "username": "admin",
   "name": "Admin",
-  "email": "admin@exemplo.com",
   "role": "ADMIN",
   "mustChangePassword": false,
   "createdAt": "<timestamp atual>"
 }
 ```
 
+4. No Firestore, crie o documento `usernameLookup/admin` com:
+
+```json
+{ "email": "admin@grupotrab.internal" }
+```
+
 ### 5. Criar usuários STUDENT
 
-1. Firebase Console → Authentication → Adicionar usuário
-2. Copie o UID gerado
+1. Firebase Console → Authentication → Adicionar usuário:
+   - **Email:** `{username}@grupotrab.internal` (ex: `joao@grupotrab.internal`)
+   - **Senha:** temporária
+2. Copie o UID gerado.
 3. No Firestore, crie `users/{uid}`:
 
 ```json
 {
   "uid": "<UID>",
-  "name": "Nome do Estudante",
-  "email": "estudante@exemplo.com",
+  "username": "joao",
+  "name": "João Silva",
   "role": "STUDENT",
   "mustChangePassword": true,
   "createdAt": "<timestamp atual>"
 }
+```
+
+4. No Firestore, crie `usernameLookup/joao`:
+
+```json
+{ "email": "joao@grupotrab.internal" }
 ```
 
 O campo `mustChangePassword: true` força a troca de senha no primeiro acesso.

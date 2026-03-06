@@ -1,19 +1,15 @@
-import { auth } from './firebase-config.js';
+import { auth, db } from './firebase-config.js';
 import { requireGuest } from './auth-guard.js';
-import {
-  signInWithEmailAndPassword,
-  sendPasswordResetEmail
-} from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+import { signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
+import { doc, getDoc }               from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 requireGuest();
 
-const form        = document.getElementById('login-form');
-const emailInput  = document.getElementById('email');
-const passInput   = document.getElementById('password');
-const alertEl     = document.getElementById('alert');
-const submitBtn   = document.getElementById('submit-btn');
-const forgotLink  = document.getElementById('forgot-link');
-const resetNotice = document.getElementById('reset-notice');
+const form          = document.getElementById('login-form');
+const usernameInput = document.getElementById('username');
+const passInput     = document.getElementById('password');
+const alertEl       = document.getElementById('alert');
+const submitBtn     = document.getElementById('submit-btn');
 
 function showAlert(msg) {
   alertEl.textContent = msg;
@@ -22,17 +18,14 @@ function showAlert(msg) {
 function hideAlert() { alertEl.classList.add('hidden'); }
 
 function setLoading(on) {
-  submitBtn.disabled  = on;
+  submitBtn.disabled    = on;
   submitBtn.textContent = on ? 'Entrando...' : 'Entrar';
 }
 
 const AUTH_ERRORS = {
-  'auth/invalid-email':     'Email inválido.',
   'auth/user-disabled':     'Conta desativada.',
   'auth/too-many-requests': 'Muitas tentativas. Aguarde e tente novamente.',
-  // Note: 'auth/user-not-found' and 'auth/wrong-password' are intentionally
-  // mapped to the same generic message to prevent account enumeration.
-  'auth/invalid-credential':'Email ou senha incorretos.'
+  'auth/invalid-credential':'Usuário ou senha incorretos.'
 };
 
 form.addEventListener('submit', async (e) => {
@@ -40,39 +33,26 @@ form.addEventListener('submit', async (e) => {
   hideAlert();
   setLoading(true);
 
-  try {
-    await signInWithEmailAndPassword(
-      auth,
-      emailInput.value.trim(),
-      passInput.value
-    );
-    // onAuthStateChanged in auth-guard will handle redirect
-  } catch (err) {
+  const username = usernameInput.value.trim().toLowerCase();
+  if (!username) {
     setLoading(false);
-    showAlert(AUTH_ERRORS[err.code] || 'Erro ao entrar. Tente novamente.');
-  }
-});
-
-forgotLink.addEventListener('click', async (e) => {
-  e.preventDefault();
-  hideAlert();
-  resetNotice.classList.add('hidden');
-
-  const email = emailInput.value.trim();
-  if (!email) {
-    showAlert('Digite seu email no campo acima antes de solicitar o reset.');
+    showAlert('Digite seu usuário.');
     return;
   }
 
   try {
-    await sendPasswordResetEmail(auth, email);
-    resetNotice.classList.remove('hidden');
+    const lookupSnap = await getDoc(doc(db, 'usernameLookup', username));
+    if (!lookupSnap.exists()) {
+      setLoading(false);
+      showAlert('Usuário ou senha incorretos.');
+      return;
+    }
+
+    const { email } = lookupSnap.data();
+    await signInWithEmailAndPassword(auth, email, passInput.value);
+    // onAuthStateChanged in auth-guard will handle redirect
   } catch (err) {
-    const msgs = {
-      'auth/invalid-email': 'Email inválido.'
-      // Note: 'auth/user-not-found' is intentionally omitted to prevent
-      // account enumeration. Firebase silently succeeds for unknown emails.
-    };
-    showAlert(msgs[err.code] || 'Erro ao enviar email de reset. Tente novamente.');
+    setLoading(false);
+    showAlert(AUTH_ERRORS[err.code] || 'Erro ao entrar. Tente novamente.');
   }
 });

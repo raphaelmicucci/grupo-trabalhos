@@ -23,7 +23,7 @@ requireAuth(async (userProfile) => {
 
 // ── UI setup ──────────────────────────────────────────────────
 function setupUI() {
-  document.getElementById('user-name').textContent = profile.name || profile.email;
+  document.getElementById('user-name').textContent = profile.name || profile.username;
 
   if (profile.role === 'ADMIN') {
     document.getElementById('admin-link').classList.remove('hidden');

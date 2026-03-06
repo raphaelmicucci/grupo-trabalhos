@@ -1,0 +1,7 @@
+[
+  {
+    "origin": ["http://localhost:3000", "http://localhost:8080", "https://raphaelmicucci.github.io"],
+    "method": ["GET", "POST", "PUT", "DELETE"],
+    "maxAgeSeconds": 3600
+  }
+]

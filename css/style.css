@@ -435,6 +435,17 @@ tr:hover td { background: var(--surface); }
   border-bottom: 1px solid var(--border-light);
 }
 .enrollment-subject-item:last-child { border-bottom: none; }
+.checklist-semester-header {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--text);
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 0 0.25rem;
+  margin-top: 0.25rem;
+}
+.checklist-semester-header:first-child { padding-top: 0; margin-top: 0; }
 .enrollment-subject-item input[type="checkbox"] {
   width: 1rem;
   height: 1rem;
