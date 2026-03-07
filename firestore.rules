@@ -2,7 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ── Helpers ──────────────────────────────────────────────
     function isAuth() {
       return request.auth != null;
     }
@@ -16,59 +15,41 @@ service cloud.firestore {
       return isAuth() && request.auth.uid == uid;
     }
 
-    // ── usernameLookup ───────────────────────────────────────────
-    // Public read — documents only contain a synthetic email, no PII.
-    // Only admins can create/update/delete entries.
     match /usernameLookup/{username} {
       allow read: if true;
       allow write: if isAdmin();
     }
 
-    // ── users ────────────────────────────────────────────────
-    // Admins can read/write any user doc.
-    // Users can read their own doc and update ONLY mustChangePassword.
+    // Public read is required for the no-login student home.
     match /users/{uid} {
-      allow read: if isOwner(uid) || isAdmin();
+      allow read: if true;
       allow create: if isAdmin();
       allow update: if isAdmin() ||
         (isOwner(uid) &&
-          request.resource.data.diff(resource.data).affectedKeys()
-            .hasOnly(['mustChangePassword']));
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['mustChangePassword']));
       allow delete: if isAdmin();
     }
 
-    // ── subjects ─────────────────────────────────────────────
-    // All authenticated users can read; only admins can write.
     match /subjects/{subjectId} {
-      allow read: if isAuth();
+      allow read: if true;
       allow write: if isAdmin();
     }
 
-    // ── enrollments ──────────────────────────────────────────
-    // Users can read their own enrollments; admins can read/write all.
     match /enrollments/{enrollmentId} {
-      allow read: if isAuth() &&
-        (resource.data.studentUid == request.auth.uid || isAdmin());
+      allow read: if true;
       allow write: if isAdmin();
     }
 
-    // ── activities ───────────────────────────────────────────
-    // All authenticated users can read; only admins can write.
-    // Deletion is not allowed (no delete rule).
     match /activities/{activityId} {
-      allow read: if isAuth();
+      allow read: if true;
       allow create: if isAdmin();
       allow update: if isAdmin();
-      // no delete rule → delete is denied
     }
 
-    // ── activityStatus ───────────────────────────────────────
-    // Each student can only read/write their own status docs.
-    // On update, studentUid must remain unchanged and match the authenticated user.
+    // Keep status private; this feature is no longer shown on student view.
     match /activityStatus/{statusId} {
       allow read: if isAuth() && resource.data.studentUid == request.auth.uid;
-      allow create: if isAuth() &&
-        request.resource.data.studentUid == request.auth.uid;
+      allow create: if isAuth() && request.resource.data.studentUid == request.auth.uid;
       allow update: if isAuth() &&
         resource.data.studentUid == request.auth.uid &&
         request.resource.data.studentUid == request.auth.uid;

@@ -7,9 +7,59 @@
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <div id="loading-overlay">
-    <span>Carregando...</span>
-  </div>
+  <div id="loading-overlay"><span>Carregando...</span></div>
+
+  <header>
+    <div class="header-inner">
+      <span class="header-title">Atividades Acadêmicas</span>
+      <a href="login.html" id="admin-link" class="admin-link-discreet">Admin</a>
+    </div>
+  </header>
+
+  <main class="container" style="padding-top:1.5rem">
+    <div class="mode-switch">
+      <button id="schedule-button" class="btn btn-primary" type="button">Grade Horária</button>
+      <button id="tasks-button" class="btn" type="button">Tarefas</button>
+    </div>
+
+    <section style="margin-top:1rem">
+      <h2>Alunos</h2>
+      <div id="student-list-home" class="student-grid">
+        <div class="empty-state">Carregando alunos...</div>
+      </div>
+    </section>
+
+    <section id="tasks-filters" class="filters hidden" style="margin-top:1rem">
+      <div class="filter-group">
+        <label for="filter-subject">Disciplina</label>
+        <select id="filter-subject">
+          <option value="">Todas</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-type">Tipo</label>
+        <select id="filter-type">
+          <option value="">Todos</option>
+          <option value="PROVA">Prova</option>
+          <option value="CURSO">Curso</option>
+          <option value="ATIVIDADE">Atividade</option>
+        </select>
+      </div>
+      <div class="filter-group">
+        <label for="filter-past">Período</label>
+        <select id="filter-past">
+          <option value="future">Hoje e próximas</option>
+          <option value="all">Todas</option>
+          <option value="past">Somente passadas</option>
+        </select>
+      </div>
+    </section>
+
+    <section id="result-section" style="margin-top:1rem">
+      <div id="result-list" class="empty-state">Selecione um aluno.</div>
+    </section>
+  </main>
+
   <script type="module" src="js/index.js"></script>
 </body>
 </html>

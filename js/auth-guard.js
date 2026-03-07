@@ -1,19 +1,10 @@
 /**
- * auth-guard.js — Route protection helpers.
- *
- * Exported functions:
- *   requireAuth(callback)  — Ensures the user is authenticated and profile
- *                            exists in Firestore.  Redirects to login when
- *                            unauthenticated, and to change-password when
- *                            mustChangePassword === true.
- *   requireAdmin(callback) — Like requireAuth but also checks role === 'ADMIN'.
- *   requireGuest(callback) — Redirects away when the user IS already
- *                            authenticated (used on the login page).
+ * auth-guard.js - Route protection helpers.
  */
 
 import { auth, db } from './firebase-config.js';
 import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js';
-import { doc, getDoc }                 from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js';
 
 function to(page) {
   window.location.href = page;
@@ -24,15 +15,16 @@ function hideLoader() {
   if (el) el.classList.add('hidden');
 }
 
-// ── requireAuth ──────────────────────────────────────────────
 export function requireAuth(callback) {
   onAuthStateChanged(auth, async (user) => {
-    if (!user) { to('login.html'); return; }
+    if (!user) {
+      to('login.html');
+      return;
+    }
 
     try {
       const snap = await getDoc(doc(db, 'users', user.uid));
       if (!snap.exists()) {
-        // Profile missing — sign out and redirect to login
         await signOut(auth);
         to('login.html');
         return;
@@ -40,12 +32,9 @@ export function requireAuth(callback) {
 
       const profile = { uid: user.uid, ...snap.data() };
 
-      if (profile.mustChangePassword) {
-        // Do not redirect if already on change-password page
-        if (!window.location.pathname.endsWith('change-password.html')) {
-          to('change-password.html');
-          return;
-        }
+      if (profile.mustChangePassword && !window.location.pathname.endsWith('change-password.html')) {
+        to('change-password.html');
+        return;
       }
 
       hideLoader();
@@ -57,19 +46,16 @@ export function requireAuth(callback) {
   });
 }
 
-// ── requireAdmin ─────────────────────────────────────────────
 export function requireAdmin(callback) {
   requireAuth((profile) => {
     if (profile.role !== 'ADMIN') {
-      to('dashboard.html');
+      to('index.html');
       return;
     }
     callback(profile);
   });
 }
 
-// ── requireGuest ─────────────────────────────────────────────
-// Call on the login page — redirects away if already logged in.
 export function requireGuest(callback) {
   onAuthStateChanged(auth, async (user) => {
     if (!user) {
@@ -84,11 +70,13 @@ export function requireGuest(callback) {
 
       if (profile?.mustChangePassword) {
         to('change-password.html');
+      } else if (profile?.role === 'ADMIN') {
+        to('admin.html');
       } else {
-        to('dashboard.html');
+        to('index.html');
       }
     } catch {
-      to('dashboard.html');
+      to('index.html');
     }
   });
 }

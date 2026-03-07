@@ -22,6 +22,15 @@
 
   <main class="container" style="padding-top:1.5rem">
 
+    <!-- Student List -->
+    <div id="student-list">
+      <h2>Lista de Alunos</h2>
+      <ul>
+        <!-- Placeholder for student profiles -->
+        <li>Carregando alunos...</li>
+      </ul>
+    </div>
+
     <!-- Filters -->
     <div class="filters">
       <div class="filter-group">
@@ -35,8 +44,8 @@
         <select id="filter-type">
           <option value="">Todos</option>
           <option value="PROVA">Prova</option>
-          <option value="TRABALHO">Trabalho</option>
-          <option value="LISTA">Lista</option>
+          <option value="CURSO">Curso</option>
+          <option value="ATIVIDADE">Atividade</option>
         </select>
       </div>
       <div class="filter-group">
@@ -52,7 +61,7 @@
 
     <!-- Tabs -->
     <div class="tabs">
-      <button class="tab active" data-tab="active">Atividades</button>
+      <button class="tab active" data-tab="active">Tarefas</button>
       <button class="tab" data-tab="archived">Arquivadas</button>
     </div>
 

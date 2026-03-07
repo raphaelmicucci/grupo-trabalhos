@@ -49,14 +49,8 @@ function setupUI() {
     document.getElementById(id).addEventListener('change', renderActivities);
   });
 
-  // Event delegation — checkboxes + admin action buttons
+  // Event delegation — admin action buttons
   const list = document.getElementById('activity-list');
-  list.addEventListener('change', (e) => {
-    if (e.target.type !== 'checkbox') return;
-    const card = e.target.closest('[data-activity-id]');
-    if (!card) return;
-    toggleStatus(card.dataset.activityId, e.target.checked, e.target);
-  });
   list.addEventListener('click', (e) => {
     const btn = e.target.closest('[data-action]');
     if (!btn) return;
@@ -147,16 +141,9 @@ function renderActivities() {
     if (filterSubject && a.subjectId !== filterSubject) return false;
     if (filterType    && a.type     !== filterType)     return false;
 
-    if (filterStatus) {
-      const status    = statuses[a.id];
-      const completed = status?.completed || false;
-      const dueDate   = toDate(a.dueDate);
-      const overdue   = !completed && dueDate < now;
-
-      if (filterStatus === 'completed' && !completed)            return false;
-      if (filterStatus === 'pending'   && (completed || overdue)) return false;
-      if (filterStatus === 'overdue'   && !overdue)              return false;
-    }
+    // Mostrar apenas atividades com data hoje ou maior, exceto se filtro de status for 'completed' ou 'overdue'
+    const dueDate = toDate(a.dueDate);
+    if (!filterStatus && dueDate < now.setHours(0,0,0,0)) return false;
 
     return true;
   });
@@ -169,7 +156,7 @@ function renderActivities() {
   if (filtered.length === 0) {
     const msg = enrolledSubjectsEmpty()
       ? 'Você não está matriculado em nenhuma disciplina.<br>Contate o administrador.'
-      : 'Nenhuma atividade encontrada.';
+      : 'Nenhuma tarefa encontrada.';
     container.innerHTML = `<div class="empty-state">${msg}</div>`;
     return;
   }
@@ -177,22 +164,15 @@ function renderActivities() {
   container.innerHTML = '';
   filtered.forEach(a => {
     const subject   = subjects.find(s => s.id === a.subjectId);
-    const status    = statuses[a.id];
-    const completed = status?.completed || false;
-    const dueDate   = toDate(a.dueDate);
-    const overdue   = !completed && dueDate < now;
-    container.appendChild(buildActivityCard(a, subject, completed, overdue));
+    container.appendChild(buildActivityCard(a, subject));
   });
 }
 
 function enrolledSubjectsEmpty() { return subjects.length === 0; }
 
-function buildActivityCard(activity, subject, completed, overdue) {
+function buildActivityCard(activity, subject) {
   const card     = document.createElement('div');
-  const classes  = ['activity-card'];
-  if (completed) classes.push('completed');
-  if (overdue)   classes.push('overdue');
-  card.className = classes.join(' ');
+  card.className = 'activity-card';
   card.dataset.activityId = activity.id;
 
   const dueDate    = toDate(activity.dueDate);
@@ -200,8 +180,8 @@ function buildActivityCard(activity, subject, completed, overdue) {
     day: '2-digit', month: '2-digit', year: 'numeric'
   });
 
-  const TYPE_LABEL = { PROVA: 'Prova', TRABALHO: 'Trabalho', LISTA: 'Lista' };
-  const TYPE_BADGE = { PROVA: 'badge-prova', TRABALHO: 'badge-trabalho', LISTA: 'badge-lista' };
+  const TYPE_LABEL = { PROVA: 'Prova', CURSO: 'Curso', ATIVIDADE: 'Atividade' };
+  const TYPE_BADGE = { PROVA: 'badge-prova', CURSO: 'badge-curso', ATIVIDADE: 'badge-tarefa' };
 
   const typeLabel = TYPE_LABEL[activity.type] || activity.type;
   const typeBadge = TYPE_BADGE[activity.type] || '';
@@ -226,24 +206,17 @@ function buildActivityCard(activity, subject, completed, overdue) {
       + '</div>';
   }
 
-  const dueLabel = overdue
-    ? `<span class="activity-due overdue">⚠ Atrasado — ${dueDateStr}</span>`
-    : `<span class="activity-due">Vence: ${dueDateStr}</span>`;
+  const dueLabel = `<span class="activity-due">Vence: ${dueDateStr}</span>`;
 
   const descHTML = activity.description
     ? `<p class="activity-desc">${esc(activity.description)}</p>` : '';
 
   card.innerHTML = `
-    <input type="checkbox" class="activity-checkbox"
-           ${completed ? 'checked' : ''}
-           aria-label="Marcar como concluída">
     <div class="activity-info">
       <div class="activity-title">${esc(activity.title)}</div>
-      <div class="activity-meta">
-        <span class="badge ${typeBadge}">${typeLabel}</span>
-        ${subject ? `<span>${esc(subject.name)}</span>` : ''}
-        ${dueLabel}
-      </div>
+      ${subject ? `<div class="activity-subject">${esc(subject.name)}${subject.code ? ` [${esc(subject.code)}]` : ''}</div>` : ''}
+      <div class="activity-meta"><span class="badge ${typeBadge}">${typeLabel}</span></div>
+      ${dueLabel}
       ${descHTML}
       ${attachHTML}
     </div>
@@ -251,39 +224,6 @@ function buildActivityCard(activity, subject, completed, overdue) {
   `;
 
   return card;
-}
-
-// ── Toggle completion status ──────────────────────────────────
-async function toggleStatus(activityId, completed, checkboxEl) {
-  try {
-    const existing = statuses[activityId];
-    const nowTs    = completed ? Timestamp.now() : null;
-
-    if (existing) {
-      await updateDoc(doc(db, 'activityStatus', existing.id), {
-        completed,
-        completedAt: nowTs
-      });
-      statuses[activityId] = { ...existing, completed, completedAt: nowTs };
-    } else {
-      const statusId   = `${profile.uid}_${activityId}`;
-      const statusData = {
-        activityId,
-        studentUid:  profile.uid,
-        completed,
-        completedAt: nowTs
-      };
-      await setDoc(doc(db, 'activityStatus', statusId), statusData);
-      statuses[activityId] = { id: statusId, ...statusData };
-    }
-
-    renderActivities();
-  } catch (err) {
-    console.error('toggleStatus error:', err);
-    alert('Erro ao atualizar status. Tente novamente.');
-    // Revert checkbox
-    if (checkboxEl) checkboxEl.checked = !completed;
-  }
 }
 
 // ── Admin: archive / restore ──────────────────────────────────
@@ -308,6 +248,23 @@ async function restoreActivity(activityId) {
   } catch {
     alert('Erro ao restaurar. Tente novamente.');
   }
+}
+
+// ── Add filters for tasks ─────────────────────────────
+function applyTaskFilters(filters) {
+  const { past, discipline } = filters;
+
+  let filteredTasks = activities;
+
+  if (past) {
+    filteredTasks = filteredTasks.filter(task => new Date(task.dueDate) < new Date());
+  }
+
+  if (discipline) {
+    filteredTasks = filteredTasks.filter(task => task.subjectId === discipline);
+  }
+
+  renderTasks(filteredTasks);
 }
 
 // ── Utilities ─────────────────────────────────────────────────

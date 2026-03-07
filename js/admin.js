@@ -58,16 +58,24 @@ requireAdmin(async (adminProfile) => {
   });
 
   await loadAllData();
-  renderCurrentTab();
 
   // Auto-open edit modal if URL has ?edit=<activityId>
   const urlParams = new URLSearchParams(window.location.search);
   const editId = urlParams.get('edit');
   if (editId) {
+    // Switch to activities tab first
+    currentTab = 'activities';
+    document.querySelectorAll('.tab').forEach(t => {
+      t.classList.toggle('active', t.dataset.tab === 'activities');
+    });
+    window.history.replaceState({}, '', 'admin.html');
+  }
+
+  renderCurrentTab();
+
+  if (editId) {
     const activity = activities.find(a => a.id === editId);
     if (activity) openActivityModal(activity);
-    // Clean up URL
-    window.history.replaceState({}, '', 'admin.html');
   }
 });
 
@@ -113,6 +121,21 @@ function formatHorario(inicio, duracao) {
 }
 
 // ════════════════════════════════════════════════════════════════
+function sortSubjectsLikeChecklist(subjectList) {
+  const WEEKDAY_ORDER = { SEG: 0, TER: 1, QUA: 2, QUI: 3, SEX: 4, SAB: 5 };
+  return [...subjectList].sort((a, b) => {
+    const semA = parseInt(a.semester, 10) || 0;
+    const semB = parseInt(b.semester, 10) || 0;
+    if (semA !== semB) return semA - semB;
+
+    const dayA = WEEKDAY_ORDER[a.weekday] ?? 99;
+    const dayB = WEEKDAY_ORDER[b.weekday] ?? 99;
+    if (dayA !== dayB) return dayA - dayB;
+
+    return (a.horario_inicio || '').localeCompare(b.horario_inicio || '');
+  });
+}
+
 // SUBJECTS TAB
 // ════════════════════════════════════════════════════════════════
 function renderSubjectsTab() {
@@ -153,7 +176,9 @@ function renderSubjectsTab() {
     QUI:'Quinta',  SEX:'Sexta', SAB:'Sábado'
   };
 
-  tbody.innerHTML = subjects.map(s => `
+  const sortedSubjects = sortSubjectsLikeChecklist(subjects);
+
+  tbody.innerHTML = sortedSubjects.map(s => `
     <tr data-id="${s.id}">
       <td>${esc(s.name)}</td>
       <td>${esc(s.code)}</td>
@@ -400,9 +425,9 @@ function openActivityModal(activity = null) {
         <label for="a-type">Tipo *</label>
         <select id="a-type" required>
           <option value="">Selecione...</option>
-          <option value="PROVA"    ${activity?.type === 'PROVA'    ? 'selected' : ''}>Prova</option>
-          <option value="TRABALHO" ${activity?.type === 'TRABALHO' ? 'selected' : ''}>Trabalho</option>
-          <option value="LISTA"    ${activity?.type === 'LISTA'    ? 'selected' : ''}>Lista</option>
+          <option value="PROVA"     ${activity?.type === 'PROVA'     ? 'selected' : ''}>Prova</option>
+          <option value="CURSO"     ${activity?.type === 'CURSO'     ? 'selected' : ''}>Curso</option>
+          <option value="ATIVIDADE" ${activity?.type === 'ATIVIDADE' ? 'selected' : ''}>Atividade</option>
         </select>
       </div>
       <div class="form-group">
@@ -671,16 +696,7 @@ function renderSubjectChecklist(studentUid) {
       .map(e => e.subjectId)
   );
 
-  const WEEKDAY_ORDER = { SEG:0, TER:1, QUA:2, QUI:3, SEX:4, SAB:5 };
-  const sorted = [...subjects].sort((a, b) => {
-    const semA = parseInt(a.semester) || 0;
-    const semB = parseInt(b.semester) || 0;
-    if (semA !== semB) return semA - semB;
-    const dayA = WEEKDAY_ORDER[a.weekday] ?? 99;
-    const dayB = WEEKDAY_ORDER[b.weekday] ?? 99;
-    if (dayA !== dayB) return dayA - dayB;
-    return (a.horario_inicio || '').localeCompare(b.horario_inicio || '');
-  });
+  const sorted = sortSubjectsLikeChecklist(subjects);
 
   const WEEKDAY_ABBR = { SEG:'SEG', TER:'TER', QUA:'QUA', QUI:'QUI', SEX:'SEX', SAB:'SÁB' };
   container.innerHTML = '';
@@ -743,6 +759,24 @@ async function toggleEnrollment(studentUid, subjectId, enroll, checkboxEl) {
     alert('Erro ao atualizar matrícula.');
     if (checkboxEl) checkboxEl.checked = !enroll; // revert
   }
+}
+
+// ── Filter enrolled subjects ─────────────────────────────
+function getEnrolledSubjects(studentId) {
+  const enrolledSubjectIds = enrollments
+    .filter(enrollment => enrollment.studentId === studentId)
+    .map(enrollment => enrollment.subjectId);
+
+  return subjects.filter(subject => enrolledSubjectIds.includes(subject.id));
+}
+
+// ── Filter tasks for enrolled subjects ─────────────────────────────
+function getTasksForEnrolledSubjects(studentId) {
+  const enrolledSubjectIds = enrollments
+    .filter(enrollment => enrollment.studentId === studentId)
+    .map(enrollment => enrollment.subjectId);
+
+  return activities.filter(activity => enrolledSubjectIds.includes(activity.subjectId));
 }
 
 // ════════════════════════════════════════════════════════════════
