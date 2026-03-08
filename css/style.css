@@ -516,6 +516,17 @@ tr:hover td { background: var(--surface); }
   text-decoration: underline;
 }
 
+#result-list .result-item {
+  margin-bottom: 0.65rem;
+}
+
+#result-list .result-item-date {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin: 0 0 0.2rem 0.05rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
 #result-list .activity-card {
   grid-template-columns: 1fr auto;
 }

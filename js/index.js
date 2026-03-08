@@ -203,7 +203,9 @@ function renderTasksForStudent(studentUid) {
   resultListEl.className = '';
   resultListEl.innerHTML = filtered.map((a) => {
     const subject = subjects.find((s) => s.id === a.subjectId);
-    const dueDate = toDate(a.dueDate).toLocaleDateString('pt-BR');
+    const due = toDate(a.dueDate);
+    const dueDate = due.toLocaleDateString('pt-BR');
+    const dueRelative = formatDueRelative(due, today);
     const typeLabel = mapTypeLabel(a.type);
     const typeBadge = mapTypeBadge(a.type);
 
@@ -214,14 +216,16 @@ function renderTasksForStudent(studentUid) {
       : '';
 
     return `
-      <div class="activity-card" data-activity-id="${esc(a.id)}">
-        <div class="activity-info">
-          <div class="activity-title">${esc(a.title || 'Sem título')}</div>
-          ${subject ? `<div class="activity-subject">${esc(subject.name)}${subject.code ? ` [${esc(subject.code)}]` : ''}</div>` : ''}
-          <div class="activity-meta"><span class="badge ${typeBadge}">${typeLabel}</span></div>
-          <span class="activity-due">Vence: ${dueDate}</span>
-          ${a.description ? `<p class="activity-desc">${esc(a.description)}</p>` : ''}
-          ${attachments}
+      <div class="result-item">
+        <div class="result-item-date">${dueDate} - ${dueRelative}</div>
+        <div class="activity-card" data-activity-id="${esc(a.id)}">
+          <div class="activity-info">
+            <div class="activity-title">${esc(a.title || 'Sem título')}</div>
+            ${subject ? `<div class="activity-subject">${esc(subject.name)}${subject.code ? ` [${esc(subject.code)}]` : ''}</div>` : ''}
+            <div class="activity-meta"><span class="badge ${typeBadge}">${typeLabel}</span></div>
+            ${a.description ? `<p class="activity-desc">${esc(a.description)}</p>` : ''}
+            ${attachments}
+          </div>
         </div>
       </div>
     `;
@@ -336,6 +340,17 @@ function durationToMinutes(duracao) {
   return ({ '1h40': 100, '3h30': 210 }[duracao] ?? null);
 }
 
+function formatDueRelative(dueDate, baseDate) {
+  const dueDay = startOfDay(dueDate);
+  const baseDay = startOfDay(baseDate);
+  const diffDays = Math.round((dueDay - baseDay) / 86400000);
+
+  if (diffDays === 0) return 'hoje';
+  if (diffDays === 1) return 'amanhã';
+  if (diffDays > 1) return `em ${diffDays} dias`;
+  if (diffDays === -1) return 'há 1 dia';
+  return `há ${Math.abs(diffDays)} dias`;
+}
 function mapTypeLabel(type) {
   return ({ PROVA: 'Prova', CURSO: 'Curso', ATIVIDADE: 'Atividade' }[type] || type || 'Tipo');
 }
